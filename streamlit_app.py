@@ -1,32 +1,24 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
-
-# Configuración de la página
-st.set_page_config(
-    page_title='Dashboard de Pilotos',
-    page_icon=':checkered_flag:', 
-)
+# Ya no es necesaria la importación de 'math' o 'pathlib' si no se usan más.
 
 # -----------------------------------------------------------------------------
 # Funciones útiles
 @st.cache_data
 def get_gdp_data():
-    """Obtiene datos de carreras directamente de Excel (formato largo)."""
+    """Obtiene datos de carreras directamente de un archivo Parquet (más rápido)."""
 
-    DATA_FILENAME = r'C:\Users\simeq\Documents\Unicorn Python\FD de nuevo\FD.xlsx'
-    # Si tu archivo Excel tiene una hoja específica, añade: sheet_name='NombreHoja'
-    gdp_df = pd.read_excel(DATA_FILENAME) # Leemos el archivo
-
-    # Convertir a numérico para asegurar el correcto funcionamiento del slider/filtro
-    gdp_df['id_mundial'] = pd.to_numeric(gdp_df['id_mundial'])
-    gdp_df['Punto_acumulado_mundial'] = pd.to_numeric(gdp_df['Punto_acumulado_mundial'])
-    gdp_df['Posicion_acumulada_mundial'] = pd.to_numeric(gdp_df['Posicion_acumulada_mundial'])
+    # 🚨 NOTA: Se recomienda poner FD_data.parquet en la misma carpeta que el script.
+    DATA_FILENAME = 'FD_data.parquet' 
     
-    # -------------------------------------------------------------------------
-    # ¡IMPORTANTE! Eliminamos la operación melt, ya que los datos ya están en formato largo.
-    # -------------------------------------------------------------------------
+    # 1. Usamos pd.read_parquet
+    gdp_df = pd.read_parquet(DATA_FILENAME) 
+
+    # 2. Las conversiones a numérico pueden seguir siendo útiles
+    # (aunque Parquet generalmente preserva los tipos de datos)
+    gdp_df['id_mundial'] = pd.to_numeric(gdp_df['id_mundial'], errors='coerce')
+    gdp_df['Punto_acumulado_mundial'] = pd.to_numeric(gdp_df['Punto_acumulado_mundial'], errors='coerce')
+    gdp_df['Posicion_acumulada_mundial'] = pd.to_numeric(gdp_df['Posicion_acumulada_mundial'], errors='coerce')
 
     return gdp_df
 
