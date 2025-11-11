@@ -6,16 +6,13 @@ import pandas as pd
 # Funciones útiles
 @st.cache_data
 def get_gdp_data():
-    """Obtiene datos de carreras directamente de un archivo Parquet (más rápido)."""
 
-    # 🚨 NOTA: Se recomienda poner FD_data.parquet en la misma carpeta que el script.
-    DATA_FILENAME = 'FD_data.parquet' 
+    DATA_FILENAME = 'FD.csv' 
     
     # 1. Usamos pd.read_parquet
-    gdp_df = pd.read_parquet(DATA_FILENAME) 
+    gdp_df = pd.read_csv(DATA_FILENAME) 
 
     # 2. Las conversiones a numérico pueden seguir siendo útiles
-    # (aunque Parquet generalmente preserva los tipos de datos)
     gdp_df['id_mundial'] = pd.to_numeric(gdp_df['id_mundial'], errors='coerce')
     gdp_df['Punto_acumulado_mundial'] = pd.to_numeric(gdp_df['Punto_acumulado_mundial'], errors='coerce')
     gdp_df['Posicion_acumulada_mundial'] = pd.to_numeric(gdp_df['Posicion_acumulada_mundial'], errors='coerce')
@@ -23,6 +20,7 @@ def get_gdp_data():
     return gdp_df
 
 gdp_df = get_gdp_data()
+
 
 # -----------------------------------------------------------------------------
 # Dibujar la página
