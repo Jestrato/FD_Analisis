@@ -3,149 +3,159 @@ import pandas as pd
 import math
 from pathlib import Path
 
-# Set the title and favicon that appear in the Browser's tab bar.
+# Configuración de la página
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title='Dashboard de Pilotos',
+    page_icon=':checkered_flag:', 
 )
 
 # -----------------------------------------------------------------------------
-# Declare some useful functions.
-
+# Funciones útiles
 @st.cache_data
 def get_gdp_data():
-    """Grab GDP data from a CSV file.
+    """Obtiene datos de carreras directamente de Excel (formato largo)."""
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+    DATA_FILENAME = r'C:\Users\simeq\Documents\Unicorn Python\FD de nuevo\FD.xlsx'
+    # Si tu archivo Excel tiene una hoja específica, añade: sheet_name='NombreHoja'
+    gdp_df = pd.read_excel(DATA_FILENAME) # Leemos el archivo
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+    # Convertir a numérico para asegurar el correcto funcionamiento del slider/filtro
+    gdp_df['id_mundial'] = pd.to_numeric(gdp_df['id_mundial'])
+    gdp_df['Punto_acumulado_mundial'] = pd.to_numeric(gdp_df['Punto_acumulado_mundial'])
+    gdp_df['Posicion_acumulada_mundial'] = pd.to_numeric(gdp_df['Posicion_acumulada_mundial'])
+    
+    # -------------------------------------------------------------------------
+    # ¡IMPORTANTE! Eliminamos la operación melt, ya que los datos ya están en formato largo.
+    # -------------------------------------------------------------------------
 
     return gdp_df
 
 gdp_df = get_gdp_data()
 
 # -----------------------------------------------------------------------------
-# Draw the actual page
+# Dibujar la página
 
-# Set the title that appears at the top of the page.
 '''
-# :earth_americas: GDP dashboard
+# :checkered_flag: Dashboard de Pilotos
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
+Explora el rendimiento de los pilotos a lo largo del mundial (ID Mundial) y por carrera.
 '''
 
-# Add some spacing
 ''
 ''
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+# -----------------------------------------------------------------------------
+# FILTROS Y SLIDERS
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
+# 1. Selector del Mundial (Análogo a 'Year')
+min_value = gdp_df['id_mundial'].min()
+max_value = gdp_df['id_mundial'].max()
+
+from_mundial, to_mundial = st.slider(
+    '¿Qué Mundiales (ID Mundial) te interesan?',
     min_value=min_value,
     max_value=max_value,
     value=[min_value, max_value])
 
-countries = gdp_df['Country Code'].unique()
+# 2. Multiselect de Pilotos (Análogo a 'Countries')
+pilots = gdp_df['Piloto'].unique()
 
-if not len(countries):
-    st.warning("Select at least one country")
+if not len(pilots):
+    st.warning("Selecciona al menos un piloto")
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
+selected_pilots = st.multiselect(
+    '¿Qué pilotos quieres ver?',
+    pilots,
+    ['Daniel Flipiardo', 'Michael Schufaker', 'Whisky Raikkonen']) # Ajusta los pilotos por defecto
 
 ''
 ''
 ''
 
-# Filter the data
+# -----------------------------------------------------------------------------
+# FILTRADO DE DATOS
+
+# Filtramos por Piloto y por el rango de Mundiales (id_mundial)
 filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
+    (gdp_df['Piloto'].isin(selected_pilots))
+    & (gdp_df['id_mundial'] <= to_mundial)
+    & (from_mundial <= gdp_df['id_mundial'])
 ]
 
-st.header('GDP over time', divider='gray')
+st.header('Puntos Acumulados a lo largo de las Carreras', divider='gray')
 
 ''
+# -----------------------------------------------------------------------------
+# GRÁFICO DE LÍNEAS
 
 st.line_chart(
     filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+    x='Carrera_mundial', # Eje X: La carrera dentro del mundial
+    y='Punto_acumulado_mundial', # Eje Y: Puntos
+    color='Piloto', # Separación por piloto
 )
 
 ''
 ''
 
+# -----------------------------------------------------------------------------
+# MÉTRICAS (Rendimiento final)
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
+st.header(f'Clasificación Final del Mundial {to_mundial}', divider='gray')
 
 ''
 
 cols = st.columns(4)
 
-for i, country in enumerate(selected_countries):
+# Filtramos solo por el Mundial final seleccionado (to_mundial)
+# y la última carrera dentro de ese mundial para obtener el valor final.
+final_mundial = gdp_df[gdp_df['id_mundial'] == to_mundial]
+last_race_in_final_mundial = final_mundial[final_mundial['Carrera_mundial'] == final_mundial['Carrera_mundial'].max()]
+
+for i, pilot in enumerate(selected_pilots):
     col = cols[i % len(cols)]
-
+    
     with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
+        # Datos del piloto en el mundial final
+        pilot_data_end = last_race_in_final_mundial[last_race_in_final_mundial['Piloto'] == pilot]
+        
+        # Datos del piloto en el mundial inicial (para calcular el delta)
+        first_mundial = gdp_df[gdp_df['id_mundial'] == from_mundial]
+        # Obtenemos la última carrera del mundial inicial
+        last_race_in_first_mundial = first_mundial[first_mundial['Carrera_mundial'] == first_mundial['Carrera_mundial'].max()]
+        pilot_data_start = last_race_in_first_mundial[last_race_in_first_mundial['Piloto'] == pilot]
 
-        if math.isnan(first_gdp):
-            growth = 'n/a'
+        if not pilot_data_end.empty:
+            # Puntos y Posición Acumulada Final
+            final_points = pilot_data_end['Punto_acumulado_mundial'].iat[0]
+            final_position = pilot_data_end['Posicion_acumulada_mundial'].iat[0]
+
+            delta_value = 'n/a'
             delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+            
+            if not pilot_data_start.empty:
+                # Posición Acumulada Inicial
+                initial_position = pilot_data_start['Posicion_acumulada_mundial'].iat[0]
+                
+                # Cálculo de la mejora/empeoramiento de posición entre mundiales (una posición menor es mejor)
+                position_change = initial_position - final_position 
+                
+                if position_change > 0:
+                    delta_value = f'+{position_change} pos.'
+                    delta_color = 'inverse' # El delta se pinta "verde" porque subir posiciones es positivo
+                elif position_change < 0:
+                    delta_value = f'{position_change} pos.'
+                    delta_color = 'normal' # El delta se pinta "rojo" porque bajar posiciones es negativo
+                else:
+                    delta_value = '0 pos.'
+                    delta_color = 'off'
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+            st.metric(
+                label=f'{pilot} (Puntos Finales)',
+                value=f'{final_points:,.0f}',
+                delta=delta_value,
+                delta_color=delta_color,
+                help=f'Cambio en la Posición Acumulada Mundial entre el Mundial {from_mundial} y {to_mundial}'
+            )
+        else:
+            st.metric(label=f'{pilot} (Puntos Finales)', value='n/a', delta='n/a', delta_color='off')
